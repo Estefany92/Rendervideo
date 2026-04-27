@@ -2,31 +2,34 @@ from flask import Flask
 from utils.database import db
 from flask_migrate import Migrate
 import os
-import sqlite3
+
+# Importar modelos ANTES de create_all()
+from models.vendedor import Vendedor
+from models.venta import Venta
+from models.regla import Regla
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
+
+# Configuración PostgreSQL Render
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
+    'DATABASE_URL',
+    'postgresql://rendervideo_db_user:gn3aPSDtiDcEtZiueU2OR2WSaDNAPiHt@dpg-d7neko1f9bms738fp97g-a/rendervideo_db'
+)
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', 'dev')
 
+# Inicializar base de datos
 db.init_app(app)
 migrate = Migrate(app, db)
 
-print("Ruta absoluta de la base de datos:", os.path.abspath('db.sqlite3'))
-
+# Registrar blueprints
 from controllers.venta_controller import main_blueprint
 app.register_blueprint(main_blueprint)
 
-def init_db():
-    db_path = os.path.join(os.path.dirname(__file__), 'db.sqlite3')
-    if not os.path.exists(db_path):
-        with sqlite3.connect(db_path) as conn:
-            with open(os.path.join(os.path.dirname(__file__), 'data.sql'), encoding='utf-8') as f:
-                conn.executescript(f.read())
-
-# Llama a esta función ANTES de registrar blueprints
+# Crear tablas automáticamente
 with app.app_context():
-    init_db()
+    db.create_all()
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()
